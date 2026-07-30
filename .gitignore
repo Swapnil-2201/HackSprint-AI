@@ -1,0 +1,26 @@
+﻿# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# Vite
+.vite/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
