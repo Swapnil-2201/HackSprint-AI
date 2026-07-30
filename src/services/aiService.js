@@ -1,29 +1,79 @@
 import { GoogleGenAI } from "@google/genai";
 
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error(
+    "VITE_GEMINI_API_KEY is missing. Check your .env file and restart Vite."
+  );
+}
+
 const ai = new GoogleGenAI({
-  apiKey: import.meta.env.VITE_GEMINI_API_KEY,
+  apiKey,
 });
+
+// Change this if needed.
+const MODEL = "models/gemini-3.5-flash";
+
+console.log("MODEL USED:", MODEL);
 
 async function askAI(prompt) {
   try {
+    console.log("Using model:", MODEL);
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.o-flash",
+      model: "models/gemini-3.5-flash",
       contents: prompt,
     });
 
-    return response.text;
-  } catch (err) {
-    console.error(err);
-    throw err;
+    let text = "";
+
+    if (typeof response.text === "function") {
+      text = response.text();
+    } else if (typeof response.text === "string") {
+      text = response.text;
+    } else if (
+      response.candidates &&
+      response.candidates.length > 0 &&
+      response.candidates[0].content?.parts
+    ) {
+      text = response.candidates[0].content.parts
+        .map((part) => part.text || "")
+        .join("");
+    }
+
+    text = text
+      .replace(/^```json/i, "")
+      .replace(/^```/i, "")
+      .replace(/```$/i, "")
+      .trim();
+
+    return text;
+  } catch (error) {
+    console.error("Gemini Error:", error);
+
+    if (error?.status === 404) {
+      throw new Error(
+        "Selected Gemini model was not found. Try another model."
+      );
+    }
+
+    if (error?.status === 429) {
+      throw new Error(
+        "Gemini API quota exceeded. Please try again later."
+      );
+    }
+
+    throw error;
   }
 }
 
 const aiService = {
-  analyzeIdea(project) {
-  return askAI(`
-You are an expert Hackathon Mentor, Startup Advisor and SIH Judge.
+  async analyzeIdea(project) {
+    const prompt = `
+You are an expert Startup Mentor, SIH Judge, and Hackathon Evaluator.
 
-Analyze this hackathon project.
+Analyze this project.
 
 Title:
 ${project.title}
@@ -34,48 +84,62 @@ ${project.description}
 Return ONLY valid JSON.
 
 {
-  "innovationScore": 0,
-  "feasibilityScore": 0,
-  "marketPotential": 0,
-  "difficulty": "Easy",
-  "summary": "",
-  "strengths": [],
-  "weaknesses": [],
-  "risks": [],
-  "techStack": [],
-  "improvements": [],
-  "futureScope": [],
-  "judgesFeedback": ""
+  "innovationScore":0,
+  "feasibilityScore":0,
+  "marketPotential":0,
+  "difficulty":"",
+  "summary":"",
+  "strengths":[],
+  "weaknesses":[],
+  "risks":[],
+  "techStack":[],
+  "improvements":[],
+  "futureScope":[],
+  "judgesFeedback":""
 }
 
 Rules:
 
-- innovationScore must be between 1 and 10
-- feasibilityScore must be between 1 and 10
-- marketPotential must be between 1 and 10
-- difficulty must be Easy, Medium or Hard
-- strengths must contain exactly 5 points
-- weaknesses must contain exactly 5 points
-- risks must contain exactly 5 points
-- techStack must contain exactly 8 technologies
-- improvements must contain exactly 5 points
-- futureScope must contain exactly 5 points
-- summary should be around 150 words
-- judgesFeedback should be around 100 words
+innovationScore: 1-10
+feasibilityScore: 1-10
+marketPotential: 1-10
+difficulty: Easy, Medium or Hard
+
+strengths: exactly 5 items
+weaknesses: exactly 5 items
+risks: exactly 5 items
+techStack: exactly 8 technologies
+improvements: exactly 5 items
+futureScope: exactly 5 items
 
 Return ONLY JSON.
+`;
 
-Do not write markdown.
+    const result = await askAI(prompt);
 
-Do not use code fences.
+    try {
+      return JSON.parse(result);
+    } catch {
+      console.error(result);
+      throw new Error("Gemini returned invalid JSON.");
+    }
+  },
 
-Do not explain anything outside JSON.
-`);
-},
-
-  generateRoadmap(project) {
+  async generateRoadmap(project) {
     return askAI(`
-Create a complete development roadmap.
+Create a detailed 6-week development roadmap.
+
+Project:
+${project.title}
+
+Description:
+${project.description}
+`);
+  },
+
+  async generateRiskReport(project) {
+    return askAI(`
+Generate a complete project risk report.
 
 Project:
 ${project.title}
@@ -83,29 +147,7 @@ ${project.title}
 Description:
 ${project.description}
 
-Return:
-
-Week 1
-
-Week 2
-
-Week 3
-
-Week 4
-
-Week 5
-
-Week 6
-`);
-  },
-
-  generateRiskReport(project) {
-    return askAI(`
-Analyze risks for this project.
-
-${project.title}
-
-Return:
+Include:
 
 High Risks
 
@@ -117,13 +159,14 @@ Mitigation Plan
 `);
   },
 
-  generateChecklist(project) {
+  async generateChecklist(project) {
     return askAI(`
-Generate a hackathon checklist for
+Generate a hackathon checklist.
 
+Project:
 ${project.title}
 
-Include
+Include:
 
 Development
 
@@ -137,23 +180,25 @@ Deployment
 `);
   },
 
-  generatePitch(project) {
+  async generatePitch(project) {
     return askAI(`
-Generate
+Generate:
 
-60 second pitch
+1. 60-second pitch
 
-3 minute pitch
+2. 3-minute pitch
 
-5 minute pitch
+3. 5-minute pitch
 
-for
-
+Project:
 ${project.title}
+
+Description:
+${project.description}
 `);
   },
 
-  chat(message) {
+  async chat(message) {
     return askAI(message);
   },
 };
