@@ -97,8 +97,8 @@ Hackathon Submission
 
 ### Frontend
 
-* HTML5
-* CSS3
+* React
+* Tailwind CSS
 * JavaScript
 
 ### AI
@@ -115,23 +115,6 @@ Hackathon Submission
 
 ---
 
-## 📂 Project Structure
-
-```text
-HackSprint-AI/
-│
-├── index.html
-├── style.css
-├── script.js
-├── assets/
-│   ├── images/
-│   ├── icons/
-│   └── illustrations/
-│
-└── README.md
-```
-
----
 
 ## 🚀 Getting Started
 
